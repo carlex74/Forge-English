@@ -1,0 +1,16 @@
+{
+  "name": "english-app-monorepo",
+  "version": "1.0.0",
+  "description": "Herramientas de coordinación para el monorepo",
+  "scripts": {
+    "dev:frontend": "cd frontend && pnpm run dev",
+    "dev:backend": "cd backend && .\\venv\\Scripts\\uvicorn main:app --reload --port 8000",
+    "dev": "concurrently \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
+    "install:frontend": "cd frontend && pnpm install",
+    "install:backend": "cd backend && .\\venv\\Scripts\\pip install -r requirements.txt",
+    "install:all": "pnpm run install:frontend && pnpm run install:backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
