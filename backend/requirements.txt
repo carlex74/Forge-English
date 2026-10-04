@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+spacy
+wordfreq
+sqlalchemy
+pydantic
+python-dotenv
