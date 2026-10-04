@@ -5,3 +5,6 @@ wordfreq
 sqlalchemy
 pydantic
 python-dotenv
+
+pandas
+openpyxl
