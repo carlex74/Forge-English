@@ -13,7 +13,10 @@ export const ExerciseSentence = ({
   handleNext,
   getTargetWord,
   isInputWrong,
-  inputRef
+  inputRef,
+  handleExplain,
+  explanation,
+  isExplaining
 }) => {
   if (isLoading) return <p className="animate-pulse text-slate-500 dark:text-slate-400">Cargando ejercicio...</p>
   if (isError || !exerciseData?.exercise) return <p className="text-error">Error al cargar. Asegúrate de tener FastAPI corriendo.</p>
@@ -60,38 +63,55 @@ export const ExerciseSentence = ({
     return isInputWrong() ? 'text-error border-error focus:border-error' : (userAnswer ? 'text-primary border-primary' : 'text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:border-primary')
   }
 
+  const getPosColor = (pos) => {
+    const colors = {
+      VERB: 'text-blue-500 border-blue-500',
+      AUX: 'text-blue-400 border-blue-400',
+      NOUN: 'text-orange-500 border-orange-500',
+      PRON: 'text-purple-500 border-purple-500',
+      ADJ: 'text-green-500 border-green-500',
+      ADV: 'text-pink-500 border-pink-500',
+      ADP: 'text-teal-500 border-teal-500',
+      DET: 'text-yellow-500 border-yellow-500',
+      SCONJ: 'text-indigo-500 border-indigo-500',
+      CCONJ: 'text-indigo-500 border-indigo-500',
+    }
+    return colors[pos] || 'text-slate-400 border-slate-400'
+  }
+
   return (
     <div className="flex flex-col items-center gap-6 w-full">
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-center justify-center gap-2 text-xl md:text-2xl font-medium leading-loose text-center text-slate-800 dark:text-slate-100">
-        {parts.map((part, index) => (
-          <span key={index} className="flex items-center gap-2">
-            {part}
-            {index === 0 && parts.length > 1 && (
-              isMultipleChoice ? (
-                evaluationStatus !== null ? (
-                  <span className={`inline-block min-w-[100px] border-b-4 font-bold px-3 py-1 text-center rounded ${inputColorClass()}`}>
-                    {getTargetWord()}
-                  </span>
+      {!explanation ? (
+        <form onSubmit={handleSubmit} className="text-xl md:text-2xl font-medium leading-[3rem] text-center text-slate-800 dark:text-slate-100 w-full">
+          {parts.map((part, index) => (
+            <span key={index}>
+              {part}
+              {index === 0 && parts.length > 1 && (
+                isMultipleChoice ? (
+                  evaluationStatus !== null ? (
+                    <span className={`inline-block min-w-[100px] border-b-4 font-bold px-3 py-1 text-center rounded mx-2 ${inputColorClass()}`}>
+                      {getTargetWord()}
+                    </span>
+                  ) : (
+                    <span className="inline-block min-w-[100px] border-b-4 border-slate-300 dark:border-slate-700 mx-2"></span>
+                  )
                 ) : (
-                  <span className="inline-block min-w-[100px] border-b-4 border-slate-300 dark:border-slate-700"></span>
+                  <input 
+                    ref={inputRef}
+                    type="text" 
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    autoFocus
+                    disabled={evaluationStatus !== null || evaluateMutation.isPending}
+                    className={`w-36 md:w-40 px-3 py-1 mx-2 text-center bg-slate-100 dark:bg-slate-800 border-b-4 rounded outline-none transition-colors font-bold align-middle ${inputColorClass()}`}
+                  />
                 )
-              ) : (
-                <input 
-                  ref={inputRef}
-                  type="text" 
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  autoFocus
-                  disabled={evaluationStatus !== null || evaluateMutation.isPending}
-                  className={`w-36 md:w-40 px-3 py-1 text-center bg-slate-100 dark:bg-slate-800 border-b-4 rounded outline-none transition-colors font-bold ${inputColorClass()}`}
-                />
-              )
-            )}
-          </span>
-        ))}
-        
-        {!isMultipleChoice && evaluationStatus === null && (
-          <div className="flex gap-2 ml-4">
+              )}
+            </span>
+          ))}
+          
+          {!isMultipleChoice && evaluationStatus === null && (
+            <div className="inline-flex gap-2 ml-4 align-middle">
             <button 
               type="button"
               onClick={handleHint}
@@ -110,6 +130,21 @@ export const ExerciseSentence = ({
           </div>
         )}
       </form>
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-wrap gap-x-4 gap-y-6 justify-center w-full"
+        >
+          {explanation.map((token, idx) => (
+            <div key={idx} className="flex flex-col items-center">
+              <span className="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100">{token.word}</span>
+              <span className={`text-[10px] md:text-xs uppercase font-bold mt-1 border-t-2 pt-1 ${getPosColor(token.pos)}`}>
+                {token.pos_es}
+              </span>
+            </div>
+          ))}
+        </motion.div>
+      )}
 
       {isMultipleChoice && exercise.options && evaluationStatus === null && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md mt-4">
@@ -136,13 +171,26 @@ export const ExerciseSentence = ({
           ) : (
             <p className="text-red-500 font-bold text-lg">Incorrecto</p>
           )}
-          <button 
-            onClick={handleNext}
-            autoFocus
-            className="px-8 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2"
-          >
-            Siguiente (Enter)
-          </button>
+          
+          <div className="flex gap-4">
+            {!explanation && (
+              <button 
+                onClick={handleExplain}
+                disabled={isExplaining}
+                className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2 disabled:opacity-50"
+              >
+                {isExplaining ? 'Analizando...' : 'Sintaxis 🧠'}
+              </button>
+            )}
+            
+            <button 
+              onClick={handleNext}
+              autoFocus={explanation !== null} 
+              className="px-8 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2"
+            >
+              Siguiente (Enter)
+            </button>
+          </div>
         </motion.div>
       )}
     </div>

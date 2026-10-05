@@ -19,7 +19,7 @@ class ExcelDataProvider(IDataProvider):
     def _load_data(self):
         try:
             self._df = pd.read_excel(self.file_path)
-            required_columns = {"id_sentence", "original_sentence", "id_traduction", "traduced_sentence"}
+            required_columns = {"id_sentence", "original_sentence", "traduced_sentence"}
             if not required_columns.issubset(self._df.columns):
                 missing = required_columns - set(self._df.columns)
                 raise ValueError(f"El archivo Excel no tiene las columnas requeridas. Faltan: {missing}")
@@ -38,7 +38,6 @@ class ExcelDataProvider(IDataProvider):
         return {
             "id_sentence": int(row["id_sentence"]),
             "original_sentence": str(row["original_sentence"]),
-            "id_traduction": int(row["id_traduction"]),
             "traduced_sentence": str(row["traduced_sentence"])
         }
 
@@ -59,7 +58,6 @@ class SQLiteDataProvider(IDataProvider):
             return {
                 "id_sentence": sentence.id_sentence,
                 "original_sentence": sentence.original_sentence,
-                "id_traduction": sentence.id_traduction,
                 "traduced_sentence": sentence.traduced_sentence
             }
         finally:

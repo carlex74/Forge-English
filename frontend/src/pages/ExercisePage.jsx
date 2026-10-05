@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { fetchExercise, evaluateExercise } from '../core/services/exerciseService'
+import { fetchExercise, evaluateExercise, explainSentence } from '../core/services/exerciseService'
 import { ExerciseSentence } from '../components/exercise/ExerciseSentence'
 
 export const ExercisePage = () => {
@@ -13,6 +13,7 @@ export const ExercisePage = () => {
   const [userAnswer, setUserAnswer] = useState('')
   const [evaluationStatus, setEvaluationStatus] = useState(null)
   const [exerciseCount, setExerciseCount] = useState(0)
+  const [explanation, setExplanation] = useState(null)
 
   // Fetching de la oración actual
   const { data: exerciseData, isLoading, isError } = useQuery({
@@ -55,9 +56,26 @@ export const ExercisePage = () => {
     return !target.startsWith(input)
   }
 
+  const explainMutation = useMutation({
+    mutationFn: explainSentence,
+    onSuccess: (data) => {
+      setExplanation(data.breakdown)
+    }
+  })
+
+  const handleExplain = () => {
+    if (!exerciseData?.exercise) return
+    const originalText = exerciseData.exercise.original_sentence || exerciseData.original_sentence
+    // Para simplificar, si original_sentence no viene en exerciseData.exercise, deberemos enviarlo desde el backend.
+    // El endpoint random de main.py no estaba devolviendo original_sentence en la raiz de la response, pero si dentro de exercise no está, fallará.
+    // Como el composer maskea y guarda 'original_sentence' en result, debería estar.
+    explainMutation.mutate(originalText || exerciseData.exercise.original_sentence)
+  }
+
   const handleNext = () => {
     setEvaluationStatus(null)
     setUserAnswer('')
+    setExplanation(null)
     setExerciseCount(c => c + 1)
   }
 
@@ -101,6 +119,9 @@ export const ExercisePage = () => {
           getTargetWord={getTargetWord}
           isInputWrong={isInputWrong}
           inputRef={inputRef}
+          handleExplain={handleExplain}
+          explanation={explanation}
+          isExplaining={explainMutation.isPending}
         />
       </div>
 

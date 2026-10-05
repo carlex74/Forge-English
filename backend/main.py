@@ -12,6 +12,7 @@ from composer.generators import ExerciseType
 from providers import SQLiteDataProvider
 from database import get_db
 from models import Word, Tag, Explanation
+from explainer.core import GrammaticalExplainer
 
 app = FastAPI(title="Forge English API")
 
@@ -77,6 +78,7 @@ def get_random_exercise(difficulty: str = "sencilla", mode: str = "fill"):
         
         return {
             "id_sentence": sentence_data["id_sentence"],
+            "original_sentence": sentence_data["original_sentence"],
             "traduced_sentence": sentence_data["traduced_sentence"],
             "exercise": exercise
         }
@@ -99,6 +101,19 @@ def evaluate_exercise(request: EvaluateRequest):
     )
     
     return {"is_correct": is_correct}
+
+class ExplainRequest(BaseModel):
+    sentence: str
+
+@app.post("/exercise/explain")
+def explain_sentence(request: ExplainRequest):
+    """
+    Desglosa sintácticamente una oración para dar feedback gramatical al usuario.
+    """
+    explainer = GrammaticalExplainer(spacy_model)
+    breakdown = explainer.explain_sentence(request.sentence)
+    
+    return {"breakdown": breakdown}
 
 # --- FASE 1.5: ENDPOINTS DE DICCIONARIO ---
 
