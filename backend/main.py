@@ -7,7 +7,7 @@ import os
 from composer.composer_engine import Composer
 from composer.factory import StrategyContext, CriteriaType
 from composer.generators import ExerciseType
-from providers import ExcelDataProvider
+from providers import SQLiteDataProvider
 
 app = FastAPI(title="Forge English API")
 
@@ -28,14 +28,13 @@ try:
 except Exception as e:
     raise RuntimeError(f"No se pudo cargar el modelo de spacy. Asegúrate de haberlo descargado. Error: {e}")
 
-# Inicializar el DataProvider de Excel
-db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "db", "english-spanish-sentences.xlsx"))
+# Inicializar el DataProvider de SQLite
 try:
-    print(f"Cargando dataset desde {db_path}...")
-    data_provider = ExcelDataProvider(file_path=db_path)
-    print("Dataset cargado exitosamente.")
+    print("Inicializando conexión con la base de datos SQLite...")
+    data_provider = SQLiteDataProvider()
+    print("Conexión inicializada.")
 except Exception as e:
-    print(f"Advertencia: No se pudo cargar el archivo Excel: {e}")
+    print(f"Advertencia: No se pudo inicializar SQLiteDataProvider: {e}")
     data_provider = None
 
 # Modelos Pydantic para los requests
