@@ -43,9 +43,10 @@ class EvaluateRequest(BaseModel):
     target_word: str
 
 @app.get("/exercise/random")
-def get_random_exercise(difficulty: str = "sencilla"):
+def get_random_exercise(difficulty: str = "sencilla", mode: str = "fill"):
     """
     difficulty: "sencilla" (oculta una palabra al azar) o "dificil" (oculta la palabra más rara)
+    mode: "fill" (rellenar el hueco) o "choice" (múltiple opción)
     """
     if data_provider is None:
         raise HTTPException(status_code=500, detail="Data provider no está inicializado. Verifica el archivo Excel.")
@@ -63,10 +64,11 @@ def get_random_exercise(difficulty: str = "sencilla"):
         composer = Composer(spacy_model, context)
         
         # 3. Generar ejercicio
+        ex_type = ExerciseType.MULTIPLE_CHOICE if mode == "choice" else ExerciseType.COMPLETE_SENTENCE
         exercise = composer.generate_from_text(
             original_sentence=sentence_data["original_sentence"],
             traduced_sentence=sentence_data["traduced_sentence"],
-            exercise_type=ExerciseType.COMPLETE_SENTENCE
+            exercise_type=ex_type
         )
         
         return {

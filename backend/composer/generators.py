@@ -27,28 +27,34 @@ class MaskedGenerator(TypeGenerator):
             "hints": HintEngine.generate_hints(target_word, pos_tag)
         }
 
-class MultipleChoiceGenerator(TypeGenerator):
-    # Diccionario estático de distractores comunes por categoría gramatical para el MVP
-    DISTRACTORS = {
-        "VERB": ["run", "eat", "jump", "sleep", "think", "make", "go", "take", "see", "come", "want", "look"],
-        "NOUN": ["time", "person", "year", "way", "day", "thing", "man", "world", "life", "hand", "child", "eye"],
-        "ADJ": ["good", "new", "first", "last", "long", "great", "little", "own", "other", "old", "right", "big"],
-        "ADV": ["up", "so", "out", "just", "now", "how", "then", "more", "also", "here", "well", "only"],
-        "PRON": ["he", "they", "we", "she", "who", "them", "me", "him", "one", "her", "us", "you"],
-        "ADP": ["in", "on", "at", "to", "for", "with", "by", "about", "as", "from", "into", "like"]
-    }
+from composer.distractors_engine import DistractorEngine
 
+class MultipleChoiceGenerator(TypeGenerator):
     def generate(self, original_sentence: str, target_word: str, start_char: int, end_char: int, pos_tag: str, lemma: str = "") -> dict:
         masked_sentence = original_sentence[:start_char] + "___" + original_sentence[end_char:]
         
         options = [target_word]
-        possible_distractors = self.DISTRACTORS.get(pos_tag, ["apple", "dog", "fast", "blue", "happily", "run"])
         
-        # Filtrar para evitar duplicar la respuesta correcta
-        valid_distractors = [d for d in possible_distractors if d.lower() != target_word.lower()]
-        
-        # Elegir 3 distractores (o los que haya disponibles)
-        chosen_distractors = random.sample(valid_distractors, min(3, len(valid_distractors)))
+        # Obtenemos los distractores usando NLP Híbrido
+        try:
+            engine = DistractorEngine.get_instance()
+            # SpaCy procesa la palabra para obtener el token con vectores
+            target_doc = engine.nlp(target_word)
+            if len(target_doc) > 0:
+                target_token = target_doc[0]
+                # Le forzamos el pos y el lemma original por si spaCy se confunde al analizar una sola palabra aislada
+                target_token.pos_ = pos_tag
+                if lemma:
+                    target_token.lemma_ = lemma
+                    
+                chosen_distractors = engine.generate_distractors(target_token, num_distractors=3)
+            else:
+                chosen_distractors = ["apple", "run", "fast"]
+        except Exception as e:
+            # Fallback seguro
+            print(f"Warning (Distractors): {e}")
+            chosen_distractors = ["apple", "dog", "fast"]
+            
         options.extend(chosen_distractors)
         
         # Mezclar opciones para que la correcta no sea siempre la primera

@@ -11,6 +11,7 @@ function App() {
   const [theme, setTheme] = useState('dark')
   const [screen, setScreen] = useState('menu') // 'menu' | 'exercise'
   const [difficulty, setDifficulty] = useState('sencilla')
+  const [mode, setMode] = useState('fill') // 'fill' | 'choice'
   const [userAnswer, setUserAnswer] = useState('')
   const [exerciseCount, setExerciseCount] = useState(0) // Usado para el prefetching
   
@@ -31,7 +32,7 @@ function App() {
   const { data: exerciseData, isLoading, isError } = useQuery({
     queryKey: ['exercise', difficulty, exerciseCount],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/exercise/random?difficulty=${difficulty}&t=${Date.now()}`)
+      const res = await fetch(`${API_URL}/exercise/random?difficulty=${difficulty}&mode=${mode}&t=${Date.now()}`)
       if (!res.ok) throw new Error('Network error')
       return res.json()
     },
@@ -44,13 +45,13 @@ function App() {
       queryClient.prefetchQuery({
         queryKey: ['exercise', difficulty, exerciseCount + 1],
         queryFn: async () => {
-          const res = await fetch(`${API_URL}/exercise/random?difficulty=${difficulty}&t=${Date.now()}`)
+          const res = await fetch(`${API_URL}/exercise/random?difficulty=${difficulty}&mode=${mode}&t=${Date.now()}`)
           if (!res.ok) throw new Error('Network error')
           return res.json()
         },
       })
     }
-  }, [exerciseData, screen, difficulty, exerciseCount, queryClient])
+  }, [exerciseData, screen, difficulty, mode, exerciseCount, queryClient])
 
   // React Query: Mutación para evaluar la respuesta
   const evaluateMutation = useMutation({
@@ -73,8 +74,9 @@ function App() {
     }
   })
 
-  const startExercise = (diff) => {
+  const startExercise = (diff, m = 'fill') => {
     setDifficulty(diff)
+    setMode(m)
     setScreen('exercise')
     setUserAnswer('')
     setExerciseCount(0)
@@ -101,7 +103,7 @@ function App() {
   }
 
   const handleSubmit = (e) => {
-    e.preventDefault()
+    e?.preventDefault()
     if (!userAnswer.trim() || !exerciseData) return
 
     evaluateMutation.mutate({
@@ -110,53 +112,84 @@ function App() {
     })
   }
 
-  // Desglosar la oración ocultando la palabra para mostrar el input en su lugar
+  const handleOptionSelect = (option) => {
+    evaluateMutation.mutate({
+      user_answer: option,
+      target_word: getTargetWord()
+    })
+  }
+
+  // Desglosar la oración ocultando la palabra para mostrar el input o las opciones en su lugar
   const renderSentenceWithInput = () => {
     if (isLoading) return <p className="animate-pulse text-slate-500 dark:text-slate-400">Cargando ejercicio...</p>
     if (isError || !exerciseData?.exercise) return <p className="text-error">Error al cargar. Asegúrate de tener FastAPI corriendo.</p>
     
     const { exercise } = exerciseData
     const maskedSentence = exercise.masked_sentence || ""
+    const isMultipleChoice = exercise.type === "MULTIPLE_CHOICE"
     
     const parts = maskedSentence.split('___')
 
     const inputColorClass = isInputWrong() ? 'text-error border-error focus:border-error' : (userAnswer ? 'text-primary border-primary' : 'text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:border-primary')
 
     return (
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-center justify-center gap-2 text-xl md:text-2xl font-medium leading-loose text-center text-slate-800 dark:text-slate-100">
-        {parts.map((part, index) => (
-          <span key={index} className="flex items-center gap-2">
-            {part}
-            {index === 0 && parts.length > 1 && (
-              <input 
-                type="text" 
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                autoFocus
-                className={`w-36 md:w-40 px-3 py-1 text-center bg-slate-100 dark:bg-slate-800 border-b-4 rounded outline-none transition-colors font-bold ${inputColorClass}`}
-              />
-            )}
-          </span>
-        ))}
-        
-        <div className="flex gap-2 ml-4">
-          <button 
-            type="button"
-            onClick={handleHint}
-            className="p-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-full transition-colors"
-            title="Pedir pista"
-          >
-            <HelpCircle size={20} />
-          </button>
-          <button 
-            type="submit" 
-            disabled={evaluateMutation.isPending}
-            className="p-2 bg-primary hover:bg-primary-hover text-white rounded-full transition-colors disabled:opacity-50"
-          >
-            <Send size={20} />
-          </button>
-        </div>
-      </form>
+      <div className="flex flex-col items-center gap-6 w-full">
+        <form onSubmit={handleSubmit} className="flex flex-wrap items-center justify-center gap-2 text-xl md:text-2xl font-medium leading-loose text-center text-slate-800 dark:text-slate-100">
+          {parts.map((part, index) => (
+            <span key={index} className="flex items-center gap-2">
+              {part}
+              {index === 0 && parts.length > 1 && (
+                isMultipleChoice ? (
+                  <span className="inline-block min-w-[100px] border-b-4 border-slate-300 dark:border-slate-700"></span>
+                ) : (
+                  <input 
+                    type="text" 
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    autoFocus
+                    className={`w-36 md:w-40 px-3 py-1 text-center bg-slate-100 dark:bg-slate-800 border-b-4 rounded outline-none transition-colors font-bold ${inputColorClass}`}
+                  />
+                )
+              )}
+            </span>
+          ))}
+          
+          {!isMultipleChoice && (
+            <div className="flex gap-2 ml-4">
+              <button 
+                type="button"
+                onClick={handleHint}
+                className="p-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-full transition-colors"
+                title="Pedir pista"
+              >
+                <HelpCircle size={20} />
+              </button>
+              <button 
+                type="submit" 
+                disabled={evaluateMutation.isPending}
+                className="p-2 bg-primary hover:bg-primary-hover text-white rounded-full transition-colors disabled:opacity-50"
+              >
+                <Send size={20} />
+              </button>
+            </div>
+          )}
+        </form>
+
+        {isMultipleChoice && exercise.options && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md mt-4">
+            {exercise.options.map((option, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleOptionSelect(option)}
+                disabled={evaluateMutation.isPending}
+                className="py-3 px-6 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-primary dark:hover:border-primary rounded-xl font-semibold text-slate-700 dark:text-slate-200 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -202,24 +235,40 @@ function App() {
               </h1>
               
               <p className="text-lg text-slate-600 dark:text-slate-400 mb-8 font-medium">
-                Selecciona una dificultad
+                Selecciona una modalidad y dificultad
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-6 w-full px-4 justify-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full px-4 justify-center">
                 <button 
-                  onClick={() => startExercise('sencilla')}
-                  className="flex-1 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm hover:border-primary dark:hover:border-primary transition-all group flex flex-col items-center justify-center text-center gap-2 min-h-[140px]"
+                  onClick={() => startExercise('sencilla', 'fill')}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm hover:border-primary dark:hover:border-primary transition-all group flex flex-col items-center justify-center text-center gap-2 min-h-[120px]"
                 >
-                  <span className="text-xl font-bold group-hover:text-primary transition-colors text-slate-800 dark:text-slate-100">Sencilla</span>
-                  <span className="text-sm text-slate-500 dark:text-slate-400">(oculta una palabra al azar)</span>
+                  <span className="text-xl font-bold group-hover:text-primary transition-colors text-slate-800 dark:text-slate-100">Sencilla (Escribir)</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Oculta una palabra al azar</span>
                 </button>
 
                 <button 
-                  onClick={() => startExercise('dificil')}
-                  className="flex-1 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm hover:border-primary dark:hover:border-primary transition-all group flex flex-col items-center justify-center text-center gap-2 min-h-[140px]"
+                  onClick={() => startExercise('dificil', 'fill')}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm hover:border-primary dark:hover:border-primary transition-all group flex flex-col items-center justify-center text-center gap-2 min-h-[120px]"
                 >
-                  <span className="text-xl font-bold group-hover:text-primary transition-colors text-slate-800 dark:text-slate-100">Difícil</span>
-                  <span className="text-sm text-slate-500 dark:text-slate-400">(oculta la palabra más rara)</span>
+                  <span className="text-xl font-bold group-hover:text-primary transition-colors text-slate-800 dark:text-slate-100">Difícil (Escribir)</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Oculta la palabra más rara</span>
+                </button>
+
+                <button 
+                  onClick={() => startExercise('sencilla', 'choice')}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm hover:border-primary dark:hover:border-primary transition-all group flex flex-col items-center justify-center text-center gap-2 min-h-[120px]"
+                >
+                  <span className="text-xl font-bold group-hover:text-primary transition-colors text-slate-800 dark:text-slate-100">Sencilla (Opciones)</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Múltiple opción - aleatorio</span>
+                </button>
+
+                <button 
+                  onClick={() => startExercise('dificil', 'choice')}
+                  className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm hover:border-primary dark:hover:border-primary transition-all group flex flex-col items-center justify-center text-center gap-2 min-h-[120px]"
+                >
+                  <span className="text-xl font-bold group-hover:text-primary transition-colors text-slate-800 dark:text-slate-100">Difícil (Opciones)</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Múltiple opción - palabra rara</span>
                 </button>
               </div>
             </motion.div>

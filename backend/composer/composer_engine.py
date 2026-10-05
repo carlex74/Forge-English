@@ -4,11 +4,15 @@ from composer.generators import ExerciseType, GeneratorFactory
 from composer.exceptions import NoValidWordsError, SentenceLengthError
 from composer.nlp_processor import NLPProcessor
 from composer.evaluator import Evaluator
+from composer.distractors_engine import DistractorEngine
 
 class Composer:
     def __init__(self, spacy_model, context: StrategyContext = None):
         self.nlp = NLPProcessor(spacy_model)
         self.evaluator = Evaluator()
+        
+        # Inicializamos el generador de distractores (Singleton)
+        DistractorEngine.get_instance(spacy_model)
         
         # Por defecto usar estrategia aleatoria si no se provee contexto
         if context is None:
