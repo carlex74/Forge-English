@@ -1,6 +1,7 @@
-import { motion } from 'framer-motion'
-import { Send, HelpCircle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Send, HelpCircle, BookOpen, Volume2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { fetchWordDefinition } from '../../core/services/exerciseService'
 
 import { useState, useEffect } from 'react'
 
@@ -21,10 +22,14 @@ export const ExerciseSentence = ({
   isExplaining
 }) => {
   const [showSyntax, setShowSyntax] = useState(false)
+  const [wordDef, setWordDef] = useState(null)
+  const [isFetchingDef, setIsFetchingDef] = useState(false)
 
   // Desactivar sintaxis cuando cambia el ejercicio
   useEffect(() => {
   setShowSyntax(false)
+  setWordDef(null)
+  setIsFetchingDef(false)
 }, [exerciseData])
 
 if (isLoading) return <p className="animate-pulse text-slate-500 dark:text-slate-400">Cargando ejercicio...</p>
@@ -93,6 +98,31 @@ const onToggleSyntax = () => {
     handleExplain()
   }
   setShowSyntax(!showSyntax)
+}
+
+const handleExplainWord = async () => {
+  if (wordDef) {
+    setWordDef(null) // toggle off
+    return
+  }
+  
+  setIsFetchingDef(true)
+  const target = getTargetWord()
+  const cleanTarget = target.replace(/[^a-zA-Z0-9]/g, '')
+  
+  const def = await fetchWordDefinition(cleanTarget)
+  if (def) {
+    setWordDef(def)
+  } else {
+    toast.error('No se encontró definición para esta palabra.')
+  }
+  setIsFetchingDef(false)
+}
+
+const playAudio = (audioUrl) => {
+  if (!audioUrl) return
+  const audio = new Audio(audioUrl)
+  audio.play()
 }
 
 // Componente interno para renderizar el input o la respuesta
@@ -217,6 +247,14 @@ return (
 
         <div className="flex gap-4">
           <button
+            onClick={handleExplainWord}
+            type="button"
+            className="px-4 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2"
+          >
+            {isFetchingDef ? 'Buscando...' : <><BookOpen size={20} /> Definición</>}
+          </button>
+          
+          <button
             onClick={handleNext}
             autoFocus
             className="px-8 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2"
@@ -226,6 +264,71 @@ return (
         </div>
       </motion.div>
     )}
+
+    {/* Tarjeta de Definición */}
+    <AnimatePresence>
+      {wordDef && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }} 
+          animate={{ opacity: 1, height: 'auto' }} 
+          exit={{ opacity: 0, height: 0 }}
+          className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-left"
+        >
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-4 border-b border-slate-100 dark:border-slate-700 pb-4">
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white capitalize">{wordDef.word}</h3>
+              <span className="text-slate-500 dark:text-slate-400 font-mono text-lg">{wordDef.phonetic}</span>
+              {wordDef.phonetics?.find(p => p.audio) && (
+                <button 
+                  onClick={() => playAudio(wordDef.phonetics.find(p => p.audio).audio)}
+                  className="p-2 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors"
+                >
+                  <Volume2 size={24} />
+                </button>
+              )}
+            </div>
+            
+            <div className="space-y-6">
+              {wordDef.meanings.slice(0, 2).map((meaning, idx) => (
+                <div key={idx}>
+                  <p className="font-bold text-indigo-500 italic mb-2">{meaning.partOfSpeech}</p>
+                  <ul className="list-disc list-inside space-y-2 text-slate-700 dark:text-slate-300">
+                    {meaning.definitions.slice(0, 2).map((def, dIdx) => (
+                      <li key={dIdx} className="leading-relaxed">
+                        <span>{def.definition}</span>
+                        {def.example && (
+                          <p className="text-slate-500 dark:text-slate-400 italic mt-1 ml-6 border-l-2 border-slate-200 dark:border-slate-700 pl-3">
+                            "{def.example}"
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  {/* Sinónimos y Antónimos */}
+                  {(meaning.synonyms?.length > 0 || meaning.antonyms?.length > 0) && (
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm ml-2">
+                      {meaning.synonyms?.length > 0 && (
+                        <div>
+                          <span className="font-bold text-slate-600 dark:text-slate-400">Sinónimos: </span>
+                          <span className="text-indigo-600 dark:text-indigo-400">{meaning.synonyms.slice(0, 5).join(', ')}</span>
+                        </div>
+                      )}
+                      {meaning.antonyms?.length > 0 && (
+                        <div>
+                          <span className="font-bold text-slate-600 dark:text-slate-400">Antónimos: </span>
+                          <span className="text-rose-500 dark:text-rose-400">{meaning.antonyms.slice(0, 5).join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   </div>
 )
 }
