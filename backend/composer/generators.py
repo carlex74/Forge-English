@@ -24,6 +24,8 @@ class MaskedGenerator(TypeGenerator):
             "type": ExerciseType.COMPLETE_SENTENCE.value,
             "masked_sentence": masked_sentence,
             "target_word": target_word,
+            "start_char": start_char,
+            "end_char": end_char,
             "hints": HintEngine.generate_hints(target_word, pos_tag)
         }
 
@@ -64,6 +66,8 @@ class MultipleChoiceGenerator(TypeGenerator):
             "type": ExerciseType.MULTIPLE_CHOICE.value,
             "masked_sentence": masked_sentence,
             "target_word": target_word,
+            "start_char": start_char,
+            "end_char": end_char,
             "options": options,
             "hints": HintEngine.generate_hints(target_word, pos_tag)
         }
@@ -79,6 +83,8 @@ class ConjugationGenerator(TypeGenerator):
             "type": ExerciseType.CONJUGATION.value,
             "masked_sentence": masked_sentence,
             "target_word": target_word,
+            "start_char": start_char,
+            "end_char": end_char,
             "hints": HintEngine.generate_hints(target_word, pos_tag)
         }
 

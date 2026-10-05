@@ -44,7 +44,9 @@ class GrammaticalExplainer:
                 "pos": token.pos_,
                 "pos_es": POS_TRANSLATIONS.get(token.pos_, token.pos_),
                 "dep": token.dep_,
-                "is_stop": token.is_stop
+                "is_stop": token.is_stop,
+                "start_char": token.idx,
+                "end_char": token.idx + len(token.text)
             })
             
         return breakdown
