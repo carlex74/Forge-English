@@ -1,6 +1,8 @@
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional, List
+from sqlalchemy.orm import Session
 import spacy
 import os
 
@@ -8,6 +10,8 @@ from composer.composer_engine import Composer
 from composer.factory import StrategyContext, CriteriaType
 from composer.generators import ExerciseType
 from providers import SQLiteDataProvider
+from database import get_db
+from models import Word, Tag, Explanation
 
 app = FastAPI(title="Forge English API")
 
@@ -95,3 +99,46 @@ def evaluate_exercise(request: EvaluateRequest):
     )
     
     return {"is_correct": is_correct}
+
+# --- FASE 1.5: ENDPOINTS DE DICCIONARIO ---
+
+@app.get("/dictionary/words")
+def get_words(
+    skip: int = Query(0, ge=0), 
+    limit: int = Query(50, le=100), 
+    search: Optional[str] = None,
+    tag_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Word)
+    
+    if search:
+        query = query.filter(Word.word.ilike(f"%{search}%"))
+    
+    if tag_id:
+        query = query.filter(Word.tags.any(id=tag_id))
+        
+    total = query.count()
+    words = query.offset(skip).limit(limit).all()
+    
+    # Formatear la salida para incluir la traducción, ejemplos y tags
+    result = []
+    for w in words:
+        result.append({
+            "id": w.id,
+            "word": w.word,
+            "traduction": w.explanation.traduction if w.explanation else "",
+            "examples": w.explanation.examples if w.explanation else "",
+            "tags": [{"id": t.id, "type": t.type, "description": t.description} for t in w.tags]
+        })
+        
+    return {
+        "total": total,
+        "items": result
+    }
+
+@app.get("/dictionary/tags")
+def get_tags(db: Session = Depends(get_db)):
+    tags = db.query(Tag).all()
+    return [{"id": t.id, "type": t.type, "description": t.description} for t in tags]
+
