@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Toaster, toast } from 'react-hot-toast'
@@ -13,7 +13,9 @@ function App() {
   const [difficulty, setDifficulty] = useState('sencilla')
   const [mode, setMode] = useState('fill') // 'fill' | 'choice'
   const [userAnswer, setUserAnswer] = useState('')
+  const [evaluationStatus, setEvaluationStatus] = useState(null) // null | 'correct' | 'incorrect'
   const [exerciseCount, setExerciseCount] = useState(0) // Usado para el prefetching
+  const inputRef = useRef(null)
   
   const queryClient = useQueryClient()
 
@@ -66,10 +68,11 @@ function App() {
     },
     onSuccess: (data) => {
       if (data.is_correct) {
-        setUserAnswer('')
-        setExerciseCount(c => c + 1)
+        setEvaluationStatus('correct')
+        setUserAnswer(getTargetWord()) // Mostrar palabra completa
       } else {
-        toast.error('Incorrecto, inténtalo de nuevo.', { style: { background: '#f43f5e', color: '#fff' }})
+        setEvaluationStatus('incorrect')
+        setUserAnswer(getTargetWord()) // Revelar la palabra correcta
       }
     }
   })
@@ -79,6 +82,7 @@ function App() {
     setMode(m)
     setScreen('exercise')
     setUserAnswer('')
+    setEvaluationStatus(null)
     setExerciseCount(0)
   }
 
@@ -104,6 +108,10 @@ function App() {
 
   const handleSubmit = (e) => {
     e?.preventDefault()
+    if (evaluationStatus !== null) {
+      handleNext()
+      return
+    }
     if (!userAnswer.trim() || !exerciseData) return
 
     evaluateMutation.mutate({
@@ -113,11 +121,38 @@ function App() {
   }
 
   const handleOptionSelect = (option) => {
+    if (evaluationStatus !== null) return
+    setUserAnswer(option) // Para saber visualmente si era multiple choice, pero mostraremos la correcta.
     evaluateMutation.mutate({
       user_answer: option,
       target_word: getTargetWord()
     })
   }
+
+  const handleNext = () => {
+    setEvaluationStatus(null)
+    setUserAnswer('')
+    setExerciseCount(c => c + 1)
+  }
+
+  // Permite avanzar con Enter cuando ya está evaluado
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && evaluationStatus !== null) {
+        e.preventDefault()
+        handleNext()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [evaluationStatus])
+
+  // Forzar foco en el input al cargar una nueva oración o al continuar
+  useEffect(() => {
+    if (evaluationStatus === null && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [exerciseData, evaluationStatus])
 
   // Desglosar la oración ocultando la palabra para mostrar el input o las opciones en su lugar
   const renderSentenceWithInput = () => {
@@ -130,7 +165,11 @@ function App() {
     
     const parts = maskedSentence.split('___')
 
-    const inputColorClass = isInputWrong() ? 'text-error border-error focus:border-error' : (userAnswer ? 'text-primary border-primary' : 'text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:border-primary')
+    const inputColorClass = () => {
+      if (evaluationStatus === 'correct') return 'text-green-500 border-green-500 bg-green-50 dark:bg-green-900/20'
+      if (evaluationStatus === 'incorrect') return 'text-red-500 border-red-500 bg-red-50 dark:bg-red-900/20'
+      return isInputWrong() ? 'text-error border-error focus:border-error' : (userAnswer ? 'text-primary border-primary' : 'text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 focus:border-primary')
+    }
 
     return (
       <div className="flex flex-col items-center gap-6 w-full">
@@ -140,21 +179,29 @@ function App() {
               {part}
               {index === 0 && parts.length > 1 && (
                 isMultipleChoice ? (
-                  <span className="inline-block min-w-[100px] border-b-4 border-slate-300 dark:border-slate-700"></span>
+                  evaluationStatus !== null ? (
+                    <span className={`inline-block min-w-[100px] border-b-4 font-bold px-3 py-1 text-center rounded ${inputColorClass()}`}>
+                      {getTargetWord()}
+                    </span>
+                  ) : (
+                    <span className="inline-block min-w-[100px] border-b-4 border-slate-300 dark:border-slate-700"></span>
+                  )
                 ) : (
                   <input 
+                    ref={inputRef}
                     type="text" 
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
                     autoFocus
-                    className={`w-36 md:w-40 px-3 py-1 text-center bg-slate-100 dark:bg-slate-800 border-b-4 rounded outline-none transition-colors font-bold ${inputColorClass}`}
+                    disabled={evaluationStatus !== null || evaluateMutation.isPending}
+                    className={`w-36 md:w-40 px-3 py-1 text-center bg-slate-100 dark:bg-slate-800 border-b-4 rounded outline-none transition-colors font-bold ${inputColorClass()}`}
                   />
                 )
               )}
             </span>
           ))}
           
-          {!isMultipleChoice && (
+          {!isMultipleChoice && evaluationStatus === null && (
             <div className="flex gap-2 ml-4">
               <button 
                 type="button"
@@ -175,7 +222,7 @@ function App() {
           )}
         </form>
 
-        {isMultipleChoice && exercise.options && (
+        {isMultipleChoice && exercise.options && evaluationStatus === null && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md mt-4">
             {exercise.options.map((option, idx) => (
               <button
@@ -188,6 +235,26 @@ function App() {
               </button>
             ))}
           </div>
+        )}
+
+        {evaluationStatus !== null && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center gap-3 mt-4"
+          >
+            {evaluationStatus === 'correct' ? (
+              <p className="text-green-500 font-bold text-lg">¡Correcto!</p>
+            ) : (
+              <p className="text-red-500 font-bold text-lg">Incorrecto</p>
+            )}
+            <button 
+              onClick={handleNext}
+              autoFocus
+              className="px-8 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2"
+            >
+              Siguiente (Enter)
+            </button>
+          </motion.div>
         )}
       </div>
     )
