@@ -56,6 +56,16 @@ export const MenuPage = () => {
           <span className="text-xl font-bold group-hover:text-primary transition-colors text-slate-800 dark:text-slate-100">Difícil (Opciones)</span>
           <span className="text-sm text-slate-500 dark:text-slate-400">Múltiple opción - palabra rara</span>
         </button>
+        
+        <div className="col-span-1 sm:col-span-2 pt-4">
+          <button 
+            onClick={() => navigate('/dictionary')}
+            className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-300 dark:border-slate-700 p-6 rounded-2xl shadow-sm hover:border-primary hover:bg-primary/5 dark:hover:border-primary dark:hover:bg-primary/5 transition-all group flex flex-col items-center justify-center text-center gap-2"
+          >
+            <span className="text-xl font-bold group-hover:text-primary transition-colors text-slate-800 dark:text-slate-100">Explorar Diccionario</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">Busca y filtra más de 77.000 palabras por nivel y gramática</span>
+          </button>
+        </div>
       </div>
     </motion.div>
   )

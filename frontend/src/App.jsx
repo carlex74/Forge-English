@@ -5,6 +5,7 @@ import { useTheme } from './core/hooks/useTheme'
 import { Header } from './components/ui/Header'
 import { MenuPage } from './pages/MenuPage'
 import { ExercisePage } from './pages/ExercisePage'
+import { DictionaryPage } from './pages/DictionaryPage'
 
 function App() {
   const { theme, toggleTheme } = useTheme()
@@ -21,6 +22,7 @@ function App() {
             <Routes>
               <Route path="/" element={<MenuPage />} />
               <Route path="/exercise/:difficulty/:mode" element={<ExercisePage />} />
+              <Route path="/dictionary" element={<DictionaryPage />} />
             </Routes>
           </AnimatePresence>
         </main>
