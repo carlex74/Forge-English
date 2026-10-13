@@ -15,21 +15,37 @@ export const ExercisePage = () => {
   const [exerciseCount, setExerciseCount] = useState(0)
   const [explanation, setExplanation] = useState(null)
 
-  // Fetching de la oración actual
+  const prefetchedCountRef = useRef(-1)
+  const isTransitioningRef = useRef(false)
+
+  // Fetching de la oración actual con staleTime: Infinity para evitar refetch automático de endpoints aleatorios
   const { data: exerciseData, isLoading, isError } = useQuery({
     queryKey: ['exercise', difficulty, mode, exerciseCount],
     queryFn: fetchExercise,
+    staleTime: Infinity,
+    gcTime: 10 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 
-  // Prefetch de la SIGUIENTE oración en segundo plano
+  // Prefetch de la SIGUIENTE oración en segundo plano (exactamente una vez por ejercicio)
   useEffect(() => {
-    if (exerciseData) {
+    if (exerciseData && prefetchedCountRef.current !== exerciseCount) {
+      prefetchedCountRef.current = exerciseCount
       queryClient.prefetchQuery({
         queryKey: ['exercise', difficulty, mode, exerciseCount + 1],
         queryFn: fetchExercise,
+        staleTime: Infinity,
       })
     }
   }, [exerciseData, difficulty, mode, exerciseCount, queryClient])
+
+  // Reset del contador de prefetch si cambia la dificultad o modo
+  useEffect(() => {
+    prefetchedCountRef.current = -1
+    setExerciseCount(0)
+  }, [difficulty, mode])
 
   const getTargetWord = () => {
     if (!exerciseData?.exercise) return ""
@@ -66,17 +82,19 @@ export const ExercisePage = () => {
   const handleExplain = () => {
     if (!exerciseData?.exercise) return
     const originalText = exerciseData.exercise.original_sentence || exerciseData.original_sentence
-    // Para simplificar, si original_sentence no viene en exerciseData.exercise, deberemos enviarlo desde el backend.
-    // El endpoint random de main.py no estaba devolviendo original_sentence en la raiz de la response, pero si dentro de exercise no está, fallará.
-    // Como el composer maskea y guarda 'original_sentence' en result, debería estar.
     explainMutation.mutate(originalText || exerciseData.exercise.original_sentence)
   }
 
   const handleNext = () => {
+    if (isTransitioningRef.current) return
+    isTransitioningRef.current = true
     setEvaluationStatus(null)
     setUserAnswer('')
     setExplanation(null)
     setExerciseCount(c => c + 1)
+    setTimeout(() => {
+      isTransitioningRef.current = false
+    }, 300)
   }
 
   // Permite avanzar con Enter cuando ya está evaluado
@@ -84,11 +102,12 @@ export const ExercisePage = () => {
     const handleKeyDown = (e) => {
       if (e.key === 'Enter' && evaluationStatus !== null) {
         e.preventDefault()
+        e.stopPropagation()
         handleNext()
       }
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [evaluationStatus])
 
   // Forzar foco en el input al cargar una nueva oración o al continuar
