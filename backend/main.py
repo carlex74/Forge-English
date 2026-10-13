@@ -115,6 +115,8 @@ def explain_sentence(request: ExplainRequest):
     
     return {"breakdown": breakdown}
 
+from sqlalchemy.orm import selectinload, joinedload
+
 # --- FASE 1.5: ENDPOINTS DE DICCIONARIO ---
 
 @app.get("/dictionary/words")
@@ -122,15 +124,30 @@ def get_words(
     skip: int = Query(0, ge=0), 
     limit: int = Query(50, le=100), 
     search: Optional[str] = None,
+    search_mode: Optional[str] = "starts", # "starts", "contains", "exact"
     tag_id: Optional[int] = None,
+    tag_ids: Optional[str] = None, # "12,45"
     db: Session = Depends(get_db)
 ):
-    query = db.query(Word)
+    query = db.query(Word).options(selectinload(Word.tags), joinedload(Word.explanation))
     
     if search:
-        query = query.filter(Word.word.ilike(f"%{search}%"))
+        s = search.strip()
+        if search_mode == "exact":
+            query = query.filter(Word.word == s.lower())
+        elif search_mode == "contains":
+            query = query.filter(Word.word.ilike(f"%{s}%"))
+        else: # "starts" por defecto para autocompletado ultra veloz en 1.1M palabras
+            query = query.filter(Word.word.like(f"{s.lower()}%"))
     
-    if tag_id:
+    if tag_ids:
+        try:
+            ids = [int(tid.strip()) for tid in tag_ids.split(",") if tid.strip().isdigit()]
+            for tid in ids:
+                query = query.filter(Word.tags.any(id=tid))
+        except Exception:
+            pass
+    elif tag_id:
         query = query.filter(Word.tags.any(id=tag_id))
         
     total = query.count()
@@ -154,6 +171,6 @@ def get_words(
 
 @app.get("/dictionary/tags")
 def get_tags(db: Session = Depends(get_db)):
-    tags = db.query(Tag).all()
+    tags = db.query(Tag).order_by(Tag.type, Tag.description).all()
     return [{"id": t.id, "type": t.type, "description": t.description} for t in tags]
 

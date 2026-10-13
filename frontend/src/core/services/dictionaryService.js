@@ -6,10 +6,17 @@ export const getTags = async () => {
     return res.json();
 };
 
-export const getWords = async (skip = 0, limit = 50, search = '', tagId = '') => {
+export const getWords = async (skip = 0, limit = 50, search = '', tagId = '', tagIds = [], searchMode = 'starts') => {
     const params = new URLSearchParams({ skip, limit });
-    if (search) params.append('search', search);
-    if (tagId) params.append('tag_id', tagId);
+    if (search) {
+        params.append('search', search);
+        if (searchMode) params.append('search_mode', searchMode);
+    }
+    if (tagIds && tagIds.length > 0) {
+        params.append('tag_ids', tagIds.join(','));
+    } else if (tagId) {
+        params.append('tag_id', tagId);
+    }
     
     const res = await fetch(`${API_URL}/dictionary/words?${params.toString()}`);
     if (!res.ok) throw new Error('Error fetching words');
