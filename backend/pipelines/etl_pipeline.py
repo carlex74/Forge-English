@@ -9,8 +9,12 @@ from database import SessionLocal
 from models import Word, Tag, WordTag
 
 def run_pipeline(clean_db=True):
-    print("Descargando WordNet...")
-    nltk.download('wordnet')
+    try:
+        nltk.data.find('corpora/wordnet')
+    except LookupError:
+        print("WordNet no encontrado localmente. Descargando...")
+        nltk.download('wordnet')
+
     from nltk.corpus import wordnet as wn
     from wordfreq import zipf_frequency
 
