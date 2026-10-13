@@ -1,5 +1,9 @@
 import { API_URL } from '../../config/api'
 
+export const getAudioTtsUrl = (text) => {
+  return `${API_URL}/audio/tts?text=${encodeURIComponent(text)}`
+}
+
 export const fetchExercise = async ({ queryKey }) => {
   // eslint-disable-next-line no-unused-vars
   const [_key, difficulty, mode, exerciseCount] = queryKey

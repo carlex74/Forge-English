@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Body, Depends, Query
+from fastapi import FastAPI, HTTPException, Body, Depends, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
@@ -13,6 +13,7 @@ from providers import SQLiteDataProvider
 from database import get_db
 from models import Word, Tag, Explanation
 from explainer.core import GrammaticalExplainer
+from audio.service import PiperAudioService
 
 app = FastAPI(title="Forge English API")
 
@@ -42,6 +43,15 @@ except Exception as e:
     print(f"Advertencia: No se pudo inicializar SQLiteDataProvider: {e}")
     data_provider = None
 
+# Inicializar PiperAudioService (TTS neuronal local)
+try:
+    print("Inicializando servicio de audio Piper TTS...")
+    audio_service = PiperAudioService.get_instance()
+    print("Servicio de audio listo.")
+except Exception as e:
+    print(f"Advertencia: No se pudo inicializar PiperAudioService: {e}")
+    audio_service = None
+
 # Modelos Pydantic para los requests
 class EvaluateRequest(BaseModel):
     user_answer: str
@@ -51,7 +61,7 @@ class EvaluateRequest(BaseModel):
 def get_random_exercise(difficulty: str = "sencilla", mode: str = "fill"):
     """
     difficulty: "sencilla" (oculta una palabra al azar) o "dificil" (oculta la palabra más rara)
-    mode: "fill" (rellenar el hueco) o "choice" (múltiple opción)
+    mode: "fill" (rellenar el hueco), "choice" (múltiple opción) o "listen" (escuchar y completar)
     """
     if data_provider is None:
         raise HTTPException(status_code=500, detail="Data provider no está inicializado. Verifica el archivo Excel.")
@@ -69,7 +79,13 @@ def get_random_exercise(difficulty: str = "sencilla", mode: str = "fill"):
         composer = Composer(spacy_model, context)
         
         # 3. Generar ejercicio
-        ex_type = ExerciseType.MULTIPLE_CHOICE if mode == "choice" else ExerciseType.COMPLETE_SENTENCE
+        if mode == "choice":
+            ex_type = ExerciseType.MULTIPLE_CHOICE
+        elif mode in ("listen", "audio"):
+            ex_type = ExerciseType.AUDIO_COMPLETION
+        else:
+            ex_type = ExerciseType.COMPLETE_SENTENCE
+
         exercise = composer.generate_from_text(
             original_sentence=sentence_data["original_sentence"],
             traduced_sentence=sentence_data["traduced_sentence"],
@@ -85,6 +101,19 @@ def get_random_exercise(difficulty: str = "sencilla", mode: str = "fill"):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/audio/tts")
+def text_to_speech(text: str = Query(..., min_length=1, max_length=500)):
+    """
+    Sintetiza texto a audio WAV utilizando Piper TTS neuronal local.
+    """
+    if audio_service is None:
+        raise HTTPException(status_code=503, detail="Servicio de audio Piper no disponible.")
+    try:
+        wav_bytes = audio_service.synthesize(text)
+        return Response(content=wav_bytes, media_type="audio/wav")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al generar audio: {e}")
 
 @app.post("/exercise/evaluate")
 def evaluate_exercise(request: EvaluateRequest):

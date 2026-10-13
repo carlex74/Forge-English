@@ -8,6 +8,7 @@ class ExerciseType(Enum):
     MULTIPLE_CHOICE = "MULTIPLE_CHOICE"
     CONJUGATION = "CONJUGATION"
     MULTI_BLANK = "MULTI_BLANK"
+    AUDIO_COMPLETION = "AUDIO_COMPLETION"
 
 class TypeGenerator(ABC):
     @abstractmethod
@@ -110,6 +111,19 @@ class MultiBlankGenerator:
             "hints": [HintEngine.generate_hints(t["target_word"], t["pos_tag"]) for t in sorted(targets, key=lambda x: x["start_char"])]
         }
 
+class AudioCompletionGenerator(TypeGenerator):
+    def generate(self, original_sentence: str, target_word: str, start_char: int, end_char: int, pos_tag: str, lemma: str = "") -> dict:
+        masked_sentence = original_sentence[:start_char] + "___" + original_sentence[end_char:]
+        return {
+            "type": ExerciseType.AUDIO_COMPLETION.value,
+            "masked_sentence": masked_sentence,
+            "original_sentence": original_sentence,
+            "target_word": target_word,
+            "start_char": start_char,
+            "end_char": end_char,
+            "hints": HintEngine.generate_hints(target_word, pos_tag)
+        }
+
 class GeneratorFactory:
     @staticmethod
     def get_generator(exercise_type: ExerciseType):
@@ -121,4 +135,6 @@ class GeneratorFactory:
             return ConjugationGenerator()
         elif exercise_type == ExerciseType.MULTI_BLANK:
             return MultiBlankGenerator()
+        elif exercise_type == ExerciseType.AUDIO_COMPLETION:
+            return AudioCompletionGenerator()
         raise ValueError("Tipo de ejercicio no soportado")
