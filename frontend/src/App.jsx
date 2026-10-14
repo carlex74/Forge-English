@@ -6,6 +6,8 @@ import { Header } from './components/ui/Header'
 import { MenuPage } from './pages/MenuPage'
 import { ExercisePage } from './pages/ExercisePage'
 import { DictionaryPage } from './pages/DictionaryPage'
+import { QuickLearnPage } from './pages/QuickLearnPage'
+import { QuickLearnTopicPage } from './pages/QuickLearnTopicPage'
 
 function App() {
   const { theme, toggleTheme } = useTheme()
@@ -23,6 +25,9 @@ function App() {
               <Route path="/" element={<MenuPage />} />
               <Route path="/exercise/:difficulty/:mode" element={<ExercisePage />} />
               <Route path="/dictionary" element={<DictionaryPage />} />
+              <Route path="/quick-learn" element={<QuickLearnPage />} />
+              <Route path="/quick-learn/:topicId" element={<QuickLearnTopicPage />} />
+              <Route path="/quick-learn/:topicId/:subtopicId" element={<QuickLearnTopicPage />} />
             </Routes>
           </AnimatePresence>
         </main>

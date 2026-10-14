@@ -5,18 +5,18 @@ export const Header = ({ theme, toggleTheme }) => {
   const navigate = useNavigate()
   const location = useLocation()
   
-  const isExercise = location.pathname.startsWith('/exercise')
+  const canGoBack = location.pathname !== '/'
 
   return (
     <header className="absolute top-0 w-full p-6 flex justify-between items-center z-10">
       <div>
-        {isExercise && (
+        {canGoBack && (
           <button 
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors"
+            className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors py-1 px-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            <ArrowLeft size={24} />
-            <span className="font-medium">Volver</span>
+            <ArrowLeft size={20} />
+            <span className="font-bold text-sm">Inicio</span>
           </button>
         )}
       </div>

@@ -136,27 +136,61 @@ export const MenuPage = () => {
         </div>
       </div>
 
-      {/* Botón Diccionario */}
-      <div className="w-full mt-6">
+      {/* Accesos a Hubs de Aprendizaje: Quick Learn & Diccionario */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-6">
+        {/* Hub 1: Quick Learn (Fase 4) */}
+        <button 
+          onClick={() => navigate('/quick-learn')}
+          className="bg-amber-500/5 dark:bg-amber-500/10 border-2 border-amber-300/80 dark:border-amber-700/60 p-5 rounded-3xl shadow-xs hover:border-amber-500 hover:bg-amber-500/10 dark:hover:border-amber-500 dark:hover:bg-amber-500/15 transition-all group flex items-center justify-between px-6 text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-base font-black text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                  Quick Learn ⚡
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                  Cheat Sheets
+                </span>
+              </div>
+              <span className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
+                Reglas de oro, tiempos verbales, orden de adjetivos (OSASCOMP) y preposiciones con audio.
+              </span>
+            </div>
+          </div>
+          <span className="text-xs font-bold text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0 ml-3">
+            Aprender →
+          </span>
+        </button>
+
+        {/* Hub 2: Diccionario Master Data */}
         <button 
           onClick={() => navigate('/dictionary')}
-          className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-300 dark:border-slate-700 p-5 rounded-3xl shadow-xs hover:border-primary hover:bg-primary/5 dark:hover:border-primary dark:hover:bg-primary/5 transition-all group flex items-center justify-between px-6"
+          className="bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-xs hover:border-primary hover:bg-primary/5 dark:hover:border-primary dark:hover:bg-primary/5 transition-all group flex items-center justify-between px-6 text-left"
         >
-          <div className="flex items-center gap-3 text-left">
+          <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-primary/10 text-primary">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-lg font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors block">
-                Explorar Diccionario (Master Data)
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Filtra más de 1,000,000 de palabras por CEFR, clases gramaticales, temas y frecuencia
+              <div className="flex items-center gap-2">
+                <span className="text-base font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors">
+                  Word Explorer
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/20">
+                  Diccionario
+                </span>
+              </div>
+              <span className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
+                Filtra más de 1,000,000 de palabras por CEFR, clases gramaticales, temas y frecuencia.
               </span>
             </div>
           </div>
-          <span className="text-xs font-bold text-primary px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20">
-            Abrir →
+          <span className="text-xs font-bold text-primary px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 shrink-0 ml-3">
+            Explorar →
           </span>
         </button>
       </div>
